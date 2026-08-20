@@ -6,9 +6,6 @@ sleep 5
 
 echo "Starting server..."
 exec gunicorn app.main:app \
-    --workers 4 \
-    --worker-class uvicorn.workers.UvicornWorker \
+    -k uvicorn.workers.UvicornWorker \
     --bind 0.0.0.0:8000 \
-    --timeout 120 \
-    --access-logfile - \
-    --error-logfile -
+    --workers 1

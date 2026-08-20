@@ -12,6 +12,12 @@ WORKDIR /app
 # Install Python dependencies
 COPY requirements.txt .
 
+# Install CPU-only PyTorch first
+RUN pip install --no-cache-dir \
+    torch==2.3.1 \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# Install application dependencies
 RUN pip install --no-cache-dir --timeout=1000 -r requirements.txt
 
 # Copy application code

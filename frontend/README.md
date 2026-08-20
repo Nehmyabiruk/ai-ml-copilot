@@ -1,16 +1,27 @@
-# React + Vite
+# Frontend — AI/ML Copilot Engine
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite + Tailwind CSS frontend for the AI/ML Copilot Engine.
 
-Currently, two official plugins are available:
+## Scripts
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev      # Start dev server
+npm run build    # Production build
+npm run preview  # Preview production build
+```
 
-## React Compiler
+## Environment
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `VITE_API_URL` — Backend API base URL (defaults to `http://localhost:8000`)
 
-## Expanding the ESLint configuration
+## Docker
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The frontend is built as a multi-stage Docker image:
+1. **Builder:** Node 20 Alpine → `npm run build`
+2. **Runtime:** Nginx Alpine serving static files with SPA fallback
+
+Build arg:
+```bash
+docker build --build-arg VITE_API_URL=http://localhost:8000 -t ai-ml-copilot-frontend ./frontend
+```

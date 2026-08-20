@@ -11,7 +11,7 @@ from app.ingestion.service import (
 )
 from app.core.auth import get_current_user, require_project_owner
 from app.models.github import AppUser
-from app.github.service import GitHubServiceError, download_repository_archive, validate_github_url, get_public_repository_info
+from app.github.service import GitHubServiceError, download_repository_archive, validate_github_url
 
 
 router = APIRouter(
@@ -82,26 +82,42 @@ def ingest_public_repo(
     user: AppUser = Depends(get_current_user),
 ):
     project = require_project_owner(project_id, user, db)
+
     try:
+        # Only validate that the URL is a GitHub repository URL.
+        # No GitHub API call and no GitHub authentication.
         full_name = validate_github_url(request.repository_url)
-        public_info = get_public_repository_info(full_name)
-        count = ingest_github_repository(db, project_id, request.repository_url)
-        project.repository_url = f"https://github.com/{public_info['full_name']}.git"
+
+        # Public repository is cloned directly using HTTPS.
+        # No GitHub OAuth token is used.
+        count = ingest_github_repository(
+            db,
+            project_id,
+            request.repository_url,
+        )
+
+        project.repository_url = f"https://github.com/{full_name}.git"
         db.commit()
+
         return {
             "repository": {
-                "full_name": public_info["full_name"],
-                "default_branch": public_info["default_branch"],
+                "full_name": full_name,
             },
             "ingestion": {
                 "status": "completed",
                 "files_ingested": count,
             },
         }
+
     except HTTPException:
         raise
+
     except GitHubServiceError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
     except Exception as exc:
         db.rollback()
         raise HTTPException(

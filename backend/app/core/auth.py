@@ -19,7 +19,7 @@ def get_current_user(request: Request, response: Response, db: Session = Depends
     db.add(user)
     db.commit()
     db.refresh(user)
-    response.set_cookie(SESSION_COOKIE, user.session_token, httponly=True, samesite="lax", secure=os.getenv("APP_ENV", "development") == "production", max_age=60 * 60 * 24 * 30)
+    response.set_cookie(SESSION_COOKIE, user.session_token, httponly=True, samesite="none", secure=True, max_age=60 * 60 * 24 * 30,)
     return user
 
 

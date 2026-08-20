@@ -15,6 +15,8 @@ app = FastAPI(
     version="1.0.0",
 )
 
+print("CORS ORIGINS:", settings.cors_origins)
+print("FRONTEND URL:", settings.frontend_url)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()],

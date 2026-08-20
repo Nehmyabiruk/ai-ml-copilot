@@ -211,29 +211,73 @@ def download_repository_archive(
 
 
 def get_public_repository_info(full_name: str) -> dict[str, Any]:
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "AI-ML-Copilot",
+    }
+
     response = httpx.get(
         f"{API_URL}/repos/{full_name}",
-        headers={
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "AI-ML-Copilot",
-        },
+        headers=headers,
         timeout=30,
     )
+
     if response.status_code == 404:
-        raise GitHubServiceError("GitHub repository not found. Make sure the repository is public and the URL is correct.")
+        raise GitHubServiceError(
+            "GitHub repository not found. "
+            "Make sure the repository is public and the URL is correct."
+        )
+
     if response.status_code == 403:
-        raise GitHubServiceError("This repository appears to be private. Connect GitHub to access private repositories.")
+        # GitHub uses 403 for several reasons, including API rate limits.
+        remaining = response.headers.get("X-RateLimit-Remaining")
+        reset = response.headers.get("X-RateLimit-Reset")
+
+        try:
+            data = response.json()
+            message = data.get("message", "")
+        except Exception:
+            message = response.text
+
+        if remaining == "0" or "rate limit" in message.lower():
+            reset_message = ""
+
+            if reset:
+                try:
+                    reset_timestamp = int(reset)
+                    reset_message = f" Rate limit resets at Unix time {reset_timestamp}."
+                except ValueError:
+                    pass
+
+            raise GitHubServiceError(
+                "GitHub public API rate limit exceeded. "
+                "The repository is not necessarily private."
+                + reset_message
+            )
+
+        raise GitHubServiceError(
+            f"GitHub denied access to this repository: {message or response.text}"
+        )
+
     if response.status_code >= 400:
-        raise GitHubServiceError(f"GitHub API error {response.status_code}: {response.text}")
+        raise GitHubServiceError(
+            f"GitHub API error {response.status_code}: {response.text}"
+        )
+
     data = response.json()
+
+    # This endpoint is intended for public repository ingestion.
+    if data.get("private") is True:
+        raise GitHubServiceError(
+            "This repository is private. Connect GitHub to access private repositories."
+        )
+
     return {
         "github_repository_id": data["id"],
         "full_name": data["full_name"],
         "default_branch": data.get("default_branch") or "main",
     }
-
-
 def validate_patch(file_path: str, original_code: str, fixed_code: str) -> None:
     if not file_path or file_path.startswith(("/", "\\")) or ".." in file_path.replace("\\", "/").split("/"):
         raise GitHubServiceError("Invalid repository file path.")
